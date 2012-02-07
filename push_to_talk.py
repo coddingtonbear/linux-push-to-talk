@@ -6,8 +6,10 @@ from Xlib.ext import record
 from Xlib.protocol import rq
 
 class KeyMonitor(object):
-    RELEASE = 0;
-    PRESS = 1;
+    RELEASE = 0
+    PRESS = 1
+
+    F1_KEYCODE = 65470
     """
     Heavily borrowed from PyKeyLogger
     """
@@ -22,7 +24,7 @@ class KeyMonitor(object):
             self.handler = self.interface_handler
 
     def get_configured_keycode(self):
-        return int(os.environ.get('PUSH_TO_TALK_KEYCODE', 65470))
+        return int(os.environ.get('PUSH_TO_TALK_KEYCODE', KeyMonitor.F1_KEYCODE))
 
     def interface_handler(self, key, action):
         configured = self.get_configured_keycode()
