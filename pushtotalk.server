@@ -4,8 +4,8 @@
             <item value="IDL:Bonobo/GenericFactory:1.0"/>
             <item value="IDL:Bonobo/Unknown:1.0"/>
         </oaf_attribute>
-        <oaf_attribute name="name" type="string" value="Python applet example"/>
-        <oaf_attribute name="description" type="string" value="Python applet example"/>
+        <oaf_attribute name="name" type="string" value="Skype Push-to-talk Factory"/>
+        <oaf_attribute name="description" type="string" value="Allows one to use push-to-talk functionality with Skype"/>
     </oaf_server>
     <oaf_server iid="OAFIID:SkypePushToTalk" type="factory" location="OAFIID:GNOME_PysampleApplet_Factory">
         <oaf_attribute name="repo_ids" type="stringv">
@@ -13,8 +13,8 @@
             <item value="IDL:Bonobo/Control:1.0"/>
             <item value="IDL:Bonobo/Unknown:1.0"/>
         </oaf_attribute>
-        <oaf_attribute name="name" type="string" value="Python applet example"/>
-        <oaf_attribute name="description" type="string" value="Python applet example"/>
+        <oaf_attribute name="name" type="string" value="Skype Push-to-talk"/>
+        <oaf_attribute name="description" type="string" value="Allows one to use push-to-talk functionality with Skype"/>
         <oaf_attribute name="panel:category" type="string" value="Utility"/>
         <oaf_attribute name="panel:icon" type="string" value="bug-buddy.png"/>
     </oaf_server>

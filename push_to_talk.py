@@ -1,3 +1,4 @@
+#!/usr/bin/python
 import dbus
 import gtk
 import gnome.applet
