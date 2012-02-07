@@ -1,9 +1,14 @@
 import dbus
-from optparse import OptionParser
+import gtk
+import gnome.applet
+from multiprocessing import Process
 import os
+import pygtk
 from Xlib import display, X
 from Xlib.ext import record
 from Xlib.protocol import rq
+
+OAFIID = "OAFIID:SkypePushToTalk"
 
 class KeyMonitor(object):
     RELEASE = 0
@@ -97,14 +102,31 @@ class SkypeInterface(object):
         self._invoke('NAME PushToTalk')
         self._invoke('PROTOCOL 5')
 
-if __name__ == "__main__":
-    parser = OptionParser()
-    parser.add_option("-t", "--test", dest="test", action="store_true", default=False)
-    options, args = parser.parse_args()
-
+def monitor(options):
     system_bus = dbus.SessionBus()
     interface = SkypeInterface(system_bus)
     interface.start()
 
-    monitor = KeyMonitor(interface, test = options.test)
+    monitor = KeyMonitor(interface, **options)
     monitor.start()
+
+def main(applet, iid):
+    # Start the process
+    proc = Process(target=monitor)
+    proc.start()
+
+    # Make a little label
+    label = gtk.Label("Labeled")
+    applet.add(label)
+    applet.show_all()
+    return gtk.TRUE
+
+pygtk.require('2.0')
+
+gnome.applet.bonobo_factory(
+        OAFIID, 
+        gnome.applet.Applet.__gtype__,
+        "Allows one to use push-to-talk with Skype",
+        "0",
+        main
+    )
