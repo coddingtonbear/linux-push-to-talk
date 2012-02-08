@@ -7,7 +7,7 @@
         <oaf_attribute name="name" type="string" value="Skype Push-to-talk Factory"/>
         <oaf_attribute name="description" type="string" value="Allows one to use push-to-talk functionality with Skype"/>
     </oaf_server>
-    <oaf_server iid="OAFIID:SkypePushToTalk" type="factory" location="OAFIID:GNOME_PysampleApplet_Factory">
+    <oaf_server iid="OAFIID:SkypePushToTalk" type="factory" location="OAFIID:SkypePushToTalk_Factory">
         <oaf_attribute name="repo_ids" type="stringv">
             <item value="IDL:GNOME/Vertigo/PanelAppletShell:1.0"/>
             <item value="IDL:Bonobo/Control:1.0"/>

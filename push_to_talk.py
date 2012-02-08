@@ -1,15 +1,41 @@
 #!/usr/bin/python
 import dbus
 import gtk
-import gnome.applet
+import gnomeapplet
+import gobject
 from multiprocessing import Process
 import os
+import sys
 import pygtk
 from Xlib import display, X
 from Xlib.ext import record
 from Xlib.protocol import rq
 
-OAFIID = "OAFIID:SkypePushToTalk"
+class SkypePushToTalk(gnomeapplet.Applet):
+    def __init__(self, applet, iid):
+        self.applet = applet
+        self.iid = iid
+
+        self.label = gtk.Label("MUTED")
+        self.applet.add(self.label)
+        self.applet.show_all()
+
+        self.start()
+
+    @classmethod
+    def process(cls):
+        system_bus = dbus.SessionBus()
+        interface = SkypeInterface(system_bus)
+        interface.start()
+
+        monitor = KeyMonitor(interface)
+        monitor.start()
+
+    def start(self):
+        p = Process(
+                target=self.__class__.process,
+            )
+        p.start()
 
 class KeyMonitor(object):
     RELEASE = 0
@@ -103,31 +129,30 @@ class SkypeInterface(object):
         self._invoke('NAME PushToTalk')
         self._invoke('PROTOCOL 5')
 
-def monitor(options):
-    system_bus = dbus.SessionBus()
-    interface = SkypeInterface(system_bus)
-    interface.start()
-
-    monitor = KeyMonitor(interface, **options)
-    monitor.start()
-
-def main(applet, iid):
-    # Start the process
-    proc = Process(target=monitor)
-    proc.start()
-
-    # Make a little label
-    label = gtk.Label("Labeled")
-    applet.add(label)
-    applet.show_all()
+def push_to_talk_factory(applet, iid):
+    SkypePushToTalk(applet, iid)
     return gtk.TRUE
 
 pygtk.require('2.0')
 
-gnome.applet.bonobo_factory(
-        OAFIID, 
-        gnome.applet.Applet.__gtype__,
-        "Allows one to use push-to-talk with Skype",
-        "0",
-        main
-    )
+gobject.type_register(SkypePushToTalk)
+
+if __name__ == "__main__":
+    if len(sys.argv) > 1 and sys.argv[1] == '-d': # debugging
+        mainWindow = gtk.Window()
+        mainWindow.set_title('Applet window')
+        mainWindow.connect('destroy', gtk.main_quit)
+        applet = gnomeapplet.Applet()
+        push_to_talk_factory(applet, None)
+        applet.reparent(mainWindow)
+        mainWindow.show_all()
+        gtk.main()
+        sys.exit()
+    else:
+        gnomeapplet.bonobo_factory(
+                "OAFIID:SkypePushToTalk_Factory",
+                SkypePushToTalk.__gtype__,
+                "hello",
+                "0",
+                push_to_talk_factory
+            )
