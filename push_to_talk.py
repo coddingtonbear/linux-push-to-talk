@@ -3,8 +3,10 @@ import dbus
 import gtk
 import gnomeapplet
 import gobject
+import logging
 from multiprocessing import Process, Queue
 import os
+import os.path
 import sys
 from optparse import OptionParser
 import pygtk
@@ -42,6 +44,7 @@ class SkypePushToTalk(gnomeapplet.Applet):
     def read_incoming_pipe(self):
         while not self.pipe.empty():
             data = self.pipe.get_nowait()
+            logging.info("State changed to %s" % data)
             if data == KeyMonitor.UNMUTED:
                 self.label.set_label("UNMUTED")
             elif data == KeyMonitor.MUTED:
@@ -57,6 +60,7 @@ class SkypePushToTalk(gnomeapplet.Applet):
             )
         p.start()
 
+        logging.info("Process spawned")
         self.label.set_label("MUTED")
         gobject.timeout_add(SkypePushToTalk.INTERVAL, self.read_incoming_pipe)
 
@@ -175,31 +179,17 @@ pygtk.require('2.0')
 
 gobject.type_register(SkypePushToTalk)
 
-if __name__ == "__main__":
-    parser = OptionParser()
-    parser.add_option("--debug", "-d", "-t", dest="debug", default=False, action="store_true")
-    parser.add_option("--keycode", "-k", dest="keycode", default=False, action="store_true")
-    options, args = parser.parse_args()
+logging.basicConfig(
+        filename=os.path.expanduser("~/.push_to_talk.log"),
+        level=logging.DEBUG
+    )
 
-    if options.debug or options.keycode:
-        mainWindow = gtk.Window()
-        mainWindow.set_title('Applet window')
-        mainWindow.connect('destroy', gtk.main_quit)
-        applet = gnomeapplet.Applet()
-        push_to_talk_factory(
-                applet, 
-                None, 
-                get_keycode=True if options.keycode else False
-            )
-        applet.reparent(mainWindow)
-        mainWindow.show_all()
-        gtk.main()
-        sys.exit()
-    else:
-        gnomeapplet.bonobo_factory(
-                "OAFIID:SkypePushToTalk_Factory",
-                SkypePushToTalk.__gtype__,
-                "hello",
-                "0",
-                push_to_talk_factory
-            )
+if __name__ == "__main__":
+    logging.info("Starting via BonoboFactory.")
+    gnomeapplet.bonobo_factory(
+            "OAFIID:SkypePushToTalk_Factory",
+            SkypePushToTalk.__gtype__,
+            "hello",
+            "0",
+            push_to_talk_factory
+        )
