@@ -3,7 +3,7 @@ import dbus
 import gtk
 import gnomeapplet
 import gobject
-from multiprocessing import Process
+from multiprocessing import Process, Queue
 import os
 import sys
 import pygtk
@@ -12,43 +12,64 @@ from Xlib.ext import record
 from Xlib.protocol import rq
 
 class SkypePushToTalk(gnomeapplet.Applet):
+    INTERVAL = 100
+
     def __init__(self, applet, iid):
         self.applet = applet
         self.iid = iid
 
-        self.label = gtk.Label("MUTED")
+        self.label = gtk.Label("...")
         self.applet.add(self.label)
         self.applet.show_all()
 
         self.start()
 
     @classmethod
-    def process(cls):
+    def process(cls, pipe):
         system_bus = dbus.SessionBus()
         interface = SkypeInterface(system_bus)
         interface.start()
 
-        monitor = KeyMonitor(interface)
+        monitor = KeyMonitor(interface, pipe)
         monitor.start()
 
+    def read_incoming_pipe(self):
+        while not self.pipe.empty():
+            data = self.pipe.get_nowait()
+            if data == KeyMonitor.UNMUTED:
+                self.label.set_label("UNMUTED")
+            elif data == KeyMonitor.MUTED:
+                self.label.set_label("MUTED")
+        gobject.timeout_add(SkypePushToTalk.INTERVAL, self.read_incoming_pipe)
+
     def start(self):
+        self.pipe = Queue()
+
         p = Process(
                 target=self.__class__.process,
+                args = (self.pipe, )
             )
         p.start()
+
+        self.label.set_label("MUTED")
+        gobject.timeout_add(SkypePushToTalk.INTERVAL, self.read_incoming_pipe)
 
 class KeyMonitor(object):
     RELEASE = 0
     PRESS = 1
 
+    UNMUTED = 0
+    MUTED = 1
+
     F1_KEYCODE = 65470
     """
     Heavily borrowed from PyKeyLogger
     """
-    def __init__(self, interface, test = False):
+    def __init__(self, interface, pipe, test = False):
         self.local_dpy = display.Display()
         self.record_dpy = display.Display()
         self.interface = interface
+        self.pipe = pipe
 
         if test == True:
             self.handler = self.print_action
@@ -61,8 +82,10 @@ class KeyMonitor(object):
     def interface_handler(self, key, action):
         configured = self.get_configured_keycode()
         if action == KeyMonitor.PRESS and key == configured:
+            self.pipe.put(KeyMonitor.UNMUTED)
             self.interface.unmute()
         elif action == KeyMonitor.RELEASE and key == configured:
+            self.pipe.put(KeyMonitor.MUTED)
             self.interface.mute()
 
     def print_action(self, key, action):
