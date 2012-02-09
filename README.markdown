@@ -41,14 +41,14 @@ To gather a new keycode:
 
         KeyPress event, serial 36, synthetic NO, window 0x8200001,
             root 0x115, subw 0x0, time 1105893976, (85,-13), root:(466,577),
-            state 0x10, keycode 96 (keysym *0xffc9*, F12), same_screen YES,
+            state 0x10, keycode 96 (keysym 0xffc9, F12), same_screen YES,
             XLookupString gives 0 bytes: 
             XmbLookupString gives 0 bytes: 
             XFilterEvent returns: False
 
  7. Run ``python``.
- 8. Paste the value of keysym to the console.
- 9. Python will return the decimal value of the keysym you entered.
+ 8. Paste the value of keysym to the console-- in this example ``0xffc9``.
+ 9. Python will return the decimal value of the keysym you entered, in this example-- ``65481``.
  10. Open the file ``~/.push_to_talk_key``, and enter this integer as the sole contents of this file.
  11. Save this file.
  12. Log out/log in or run ``sudo killall gnome-panel``.
