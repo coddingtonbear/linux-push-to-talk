@@ -80,6 +80,7 @@ class KeyMonitor(object):
         self.interface = interface
         self.pipe = pipe
 
+        self.configured_keycode = None
         self.state = KeyMonitor.MUTED
 
         if test == True:
@@ -88,12 +89,14 @@ class KeyMonitor(object):
             self.handler = self.interface_handler
 
     def get_configured_keycode(self):
-        try:
-            with open(os.path.expanduser("~/.push_to_talk_key"), "r") as infile:
-                keycode = infile.read()
-                return int(keycode)
-        except:
-            return KeyMonitor.F1_KEYCODE
+        if not self.configured_keycode:
+            try:
+                with open(os.path.expanduser("~/.push_to_talk_key"), "r") as infile:
+                    keycode = infile.read()
+                    self.configured_keycode = int(keycode)
+            except:
+                self.configured_keycode = KeyMonitor.F1_KEYCODE
+        return self.configured_keycode
 
     def set_state(self, state):
         if self.state != state:
