@@ -16,11 +16,11 @@ On Ubuntu, this is as easy as running ``sudo apt-get install python-gtk2 python-
 
 ## Installation
 
- - Run ``sudo ./install.sh``.
- - Restart gnome-panel by either logging-out/logging-in, or running ``sudo killall gnome-panel``.
- - Right-click on your gnome panel.
- - Select 'Add to panel'.
- - Add 'Skype Push-to-talk'.
+ 1. Run ``sudo ./install.sh``.
+ 2. Restart gnome-panel by either logging-out/logging-in, or running ``sudo killall gnome-panel``.
+ 3. Right-click on your gnome panel.
+ 4. Select 'Add to panel'.
+ 5. Add 'Skype Push-to-talk'.
 
 ## Keycode configuration
 
@@ -32,24 +32,26 @@ itself, but for the moment this is a manual process.
 
 To gather a new keycode:
 
- - Run ``xev``.  A window will appear.
- - Click on the window.
- - Press the key you'd like to use for push-to-talk.
- - Close the window.
- - Examine the terminal for a 'KeyPress' followed by a 'KeyRelease' event.  
- - Gather the value for 'keysym' on the 'KeyPress' or 'KeyRelease' event (they should be identical).  In the case of F12, the output looks like:
+ 1. Run ``xev``.  A window will appear.
+ 2. Click on the window.
+ 3. Press the key you'd like to use for push-to-talk.
+ 4. Close the window.
+ 5. Examine the terminal for a 'KeyPress' followed by a 'KeyRelease' event.  
+ 6. Gather the value for 'keysym' on the 'KeyPress' or 'KeyRelease' event (they should be identical).  In the case of F12, the output looks like:
 
+ <pre><code>
     KeyPress event, serial 36, synthetic NO, window 0x8200001,
         root 0x115, subw 0x0, time 1105893976, (85,-13), root:(466,577),
         state 0x10, keycode 96 (keysym *0xffc9*, F12), same_screen YES,
         XLookupString gives 0 bytes: 
         XmbLookupString gives 0 bytes: 
         XFilterEvent returns: False
+ </code></pre>
 
- - Run ``python``.
- - Paste the value of keysym to the console.
- - Python will return the decimal value of the keysym you entered.
- - Open the file ``~/.push_to_talk_key``, and enter this integer as the sole contents of this file.
- - Save this file.
- - Log out/log in or run ``sudo killall gnome-panel``.
+ 7. Run ``python``.
+ 8. Paste the value of keysym to the console.
+ 9. Python will return the decimal value of the keysym you entered.
+ 10. Open the file ``~/.push_to_talk_key``, and enter this integer as the sole contents of this file.
+ 11. Save this file.
+ 12. Log out/log in or run ``sudo killall gnome-panel``.
 
