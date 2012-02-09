@@ -6,6 +6,7 @@ import gobject
 from multiprocessing import Process, Queue
 import os
 import sys
+from optparse import OptionParser
 import pygtk
 from Xlib import display, X
 from Xlib.ext import record
@@ -14,9 +15,10 @@ from Xlib.protocol import rq
 class SkypePushToTalk(gnomeapplet.Applet):
     INTERVAL = 100
 
-    def __init__(self, applet, iid):
+    def __init__(self, applet, iid, get_keycode=False):
         self.applet = applet
         self.iid = iid
+        self.get_keycode = get_keycode
 
         self.label = gtk.Label("...")
         self.applet.add(self.label)
@@ -25,12 +27,16 @@ class SkypePushToTalk(gnomeapplet.Applet):
         self.start()
 
     @classmethod
-    def process(cls, pipe):
+    def process(cls, pipe, get_keycode):
         system_bus = dbus.SessionBus()
         interface = SkypeInterface(system_bus)
         interface.start()
 
-        monitor = KeyMonitor(interface, pipe)
+        monitor = KeyMonitor(
+                interface, 
+                pipe,
+                test=True if get_keycode else False
+            )
         monitor.start()
 
     def read_incoming_pipe(self):
@@ -47,7 +53,7 @@ class SkypePushToTalk(gnomeapplet.Applet):
 
         p = Process(
                 target=self.__class__.process,
-                args = (self.pipe, )
+                args = (self.pipe, self.get_keycode, )
             )
         p.start()
 
@@ -71,6 +77,8 @@ class KeyMonitor(object):
         self.interface = interface
         self.pipe = pipe
 
+        self.state = KeyMonitor.MUTED
+
         if test == True:
             self.handler = self.print_action
         else:
@@ -79,14 +87,21 @@ class KeyMonitor(object):
     def get_configured_keycode(self):
         return int(os.environ.get('PUSH_TO_TALK_KEYCODE', KeyMonitor.F1_KEYCODE))
 
+    def set_state(self, state):
+        if self.state != state:
+            self.pipe.put(state)
+            if state == KeyMonitor.UNMUTED:
+                self.interface.unmute()
+            elif state == KeyMonitor.MUTED:
+                self.interface.mute()
+        self.state = state
+
     def interface_handler(self, key, action):
         configured = self.get_configured_keycode()
         if action == KeyMonitor.PRESS and key == configured:
-            self.pipe.put(KeyMonitor.UNMUTED)
-            self.interface.unmute()
+            self.set_state(KeyMonitor.UNMUTED)
         elif action == KeyMonitor.RELEASE and key == configured:
-            self.pipe.put(KeyMonitor.MUTED)
-            self.interface.mute()
+            self.set_state(KeyMonitor.MUTED)
 
     def print_action(self, key, action):
         if action == KeyMonitor.RELEASE:
@@ -152,8 +167,8 @@ class SkypeInterface(object):
         self._invoke('NAME PushToTalk')
         self._invoke('PROTOCOL 5')
 
-def push_to_talk_factory(applet, iid):
-    SkypePushToTalk(applet, iid)
+def push_to_talk_factory(applet, iid, get_keycode=False):
+    SkypePushToTalk(applet, iid, get_keycode)
     return gtk.TRUE
 
 pygtk.require('2.0')
@@ -161,12 +176,21 @@ pygtk.require('2.0')
 gobject.type_register(SkypePushToTalk)
 
 if __name__ == "__main__":
-    if len(sys.argv) > 1 and sys.argv[1] == '-d': # debugging
+    parser = OptionParser()
+    parser.add_option("--debug", "-d", "-t", dest="debug", default=False, action="store_true")
+    parser.add_option("--keycode", "-k", dest="keycode", default=False, action="store_true")
+    options, args = parser.parse_args()
+
+    if options.debug or options.keycode:
         mainWindow = gtk.Window()
         mainWindow.set_title('Applet window')
         mainWindow.connect('destroy', gtk.main_quit)
         applet = gnomeapplet.Applet()
-        push_to_talk_factory(applet, None)
+        push_to_talk_factory(
+                applet, 
+                None, 
+                get_keycode=True if options.keycode else False
+            )
         applet.reparent(mainWindow)
         mainWindow.show_all()
         gtk.main()
