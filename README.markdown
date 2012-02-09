@@ -12,6 +12,8 @@ At the moment, this application provides no facility for providing you with the 
  - pygtk
  - xlib
 
+On Ubuntu, this is as easy as running ``sudo apt-get install python-gtk2 python-xlib``.
+
 ## Installation
 
  - Run ``sudo ./install.sh``.
