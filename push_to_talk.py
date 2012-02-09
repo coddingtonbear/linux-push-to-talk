@@ -71,6 +71,7 @@ class KeyMonitor(object):
     MUTED = 1
 
     F1_KEYCODE = 65470
+    F12_KEYCODE = 65481
     """
     Heavily borrowed from PyKeyLogger
     """
@@ -95,7 +96,7 @@ class KeyMonitor(object):
                     keycode = infile.read()
                     self.configured_keycode = int(keycode)
             except:
-                self.configured_keycode = KeyMonitor.F1_KEYCODE
+                self.configured_keycode = KeyMonitor.F12_KEYCODE
         return self.configured_keycode
 
     def set_state(self, state):
