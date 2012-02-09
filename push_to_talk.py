@@ -1,4 +1,5 @@
 #!/usr/bin/python
+from __future__ import with_statement
 import dbus
 import gtk
 import gnomeapplet
@@ -7,8 +8,7 @@ import logging
 from multiprocessing import Process, Queue
 import os
 import os.path
-import sys
-from optparse import OptionParser
+import time
 import pygtk
 from Xlib import display, X
 from Xlib.ext import record
@@ -32,7 +32,6 @@ class SkypePushToTalk(gnomeapplet.Applet):
     def process(cls, pipe, get_keycode):
         system_bus = dbus.SessionBus()
         interface = SkypeInterface(system_bus)
-        interface.start()
 
         monitor = KeyMonitor(
                 interface, 
@@ -89,7 +88,12 @@ class KeyMonitor(object):
             self.handler = self.interface_handler
 
     def get_configured_keycode(self):
-        return int(os.environ.get('PUSH_TO_TALK_KEYCODE', KeyMonitor.F1_KEYCODE))
+        try:
+            with open(os.path.expanduser("~/.push_to_talk_key"), "r") as infile:
+                keycode = infile.read()
+                return int(keycode)
+        except:
+            return KeyMonitor.F1_KEYCODE
 
     def set_state(self, state):
         if self.state != state:
@@ -155,8 +159,25 @@ class KeyMonitor(object):
 class SkypeInterface(object):
     def __init__(self, bus):
         self.bus = bus
-        self.outgoing = self.bus.get_object('com.Skype.API', '/com/Skype')
-        self.outgoing_channel = self.outgoing.get_dbus_method('Invoke')
+        self.configured = False
+
+        logging.info("Starting interface...")
+        while self.configure() == True:
+            time.sleep(1)
+
+    def configure(self):
+        try:
+            logging.info("Configuring...")
+            self.outgoing = self.bus.get_object('com.Skype.API', '/com/Skype')
+            self.outgoing_channel = self.outgoing.get_dbus_method('Invoke')
+            self.configured = True
+
+            self.start()
+            logging.info("Configured.")
+            return False
+        except:
+            # This happens if Skype is not available.
+            return True
 
     def mute(self):
         self._invoke("MUTE ON")
@@ -165,7 +186,8 @@ class SkypeInterface(object):
         self._invoke("MUTE OFF")
 
     def _invoke(self, message):
-        self.outgoing_channel(message)
+        if self.configured:
+            self.outgoing_channel(message)
 
     def start(self):
         self._invoke('NAME PushToTalk')
