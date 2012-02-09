@@ -45,9 +45,9 @@ class SkypePushToTalk(gnomeapplet.Applet):
             data = self.pipe.get_nowait()
             logging.info("State changed to %s" % data)
             if data == KeyMonitor.UNMUTED:
-                self.label.set_label("UNMUTED")
+                self.label.set_markup("<span foreground='#FF0000'>TALK</span>")
             elif data == KeyMonitor.MUTED:
-                self.label.set_label("MUTED")
+                self.label.set_markup("<span>MUTE</span>")
         return True
 
     def start(self):
@@ -60,7 +60,7 @@ class SkypePushToTalk(gnomeapplet.Applet):
         p.start()
 
         logging.info("Process spawned")
-        self.label.set_label("MUTED")
+        self.label.set_label("----")
         gobject.timeout_add(SkypePushToTalk.INTERVAL, self.read_incoming_pipe)
 
 class KeyMonitor(object):
