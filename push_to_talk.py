@@ -40,7 +40,7 @@ class SkypePushToTalk(gnomeapplet.Applet):
                 self.label.set_label("UNMUTED")
             elif data == KeyMonitor.MUTED:
                 self.label.set_label("MUTED")
-        gobject.timeout_add(SkypePushToTalk.INTERVAL, self.read_incoming_pipe)
+        return True
 
     def start(self):
         self.pipe = Queue()
