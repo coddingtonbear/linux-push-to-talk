@@ -39,14 +39,12 @@ To gather a new keycode:
  5. Examine the terminal for a 'KeyPress' followed by a 'KeyRelease' event.  
  6. Gather the value for 'keysym' on the 'KeyPress' or 'KeyRelease' event (they should be identical).  In the case of F12, the output looks like:
 
- <pre><code>
-    KeyPress event, serial 36, synthetic NO, window 0x8200001,
-        root 0x115, subw 0x0, time 1105893976, (85,-13), root:(466,577),
-        state 0x10, keycode 96 (keysym *0xffc9*, F12), same_screen YES,
-        XLookupString gives 0 bytes: 
-        XmbLookupString gives 0 bytes: 
-        XFilterEvent returns: False
- </code></pre>
+        KeyPress event, serial 36, synthetic NO, window 0x8200001,
+            root 0x115, subw 0x0, time 1105893976, (85,-13), root:(466,577),
+            state 0x10, keycode 96 (keysym *0xffc9*, F12), same_screen YES,
+            XLookupString gives 0 bytes: 
+            XmbLookupString gives 0 bytes: 
+            XFilterEvent returns: False
 
  7. Run ``python``.
  8. Paste the value of keysym to the console.
