@@ -165,10 +165,6 @@ class SkypeInterface(object):
         self.bus = bus
         self.configured = False
 
-        logging.info("Starting interface...")
-        while self.configure() == True:
-            time.sleep(1)
-
     def configure(self):
         try:
             logging.info("Configuring...")
@@ -190,8 +186,12 @@ class SkypeInterface(object):
         self._invoke("MUTE OFF")
 
     def _invoke(self, message):
-        if self.configured:
+        if not self.configured:
+            self.configure()
+        try:
             self.outgoing_channel(message)
+        except:
+            self.configured = False
 
     def start(self):
         self._invoke('NAME PushToTalk')
