@@ -8,7 +8,6 @@ import logging
 from multiprocessing import Process, Queue
 import os
 import os.path
-import time
 import pygtk
 from Xlib import display, X
 from Xlib.ext import record
@@ -25,43 +24,74 @@ class SkypePushToTalk(gnomeapplet.Applet):
         self.label = gtk.Label("...")
         self.applet.add(self.label)
         self.applet.show_all()
+        self.applet.setup_menu(self.menu_xml, [
+                ('Set Key', self.set_key, )
+            ], None)
 
         self.start()
 
     @classmethod
-    def process(cls, pipe, get_keycode):
+    def process(cls, pipe, return_pipe, get_keycode):
         system_bus = dbus.SessionBus()
         interface = SkypeInterface(system_bus)
 
         monitor = KeyMonitor(
                 interface, 
                 pipe,
+                return_pipe,
                 test=True if get_keycode else False
             )
         monitor.start()
 
     def read_incoming_pipe(self):
         while not self.pipe.empty():
-            data = self.pipe.get_nowait()
-            logging.info("State changed to %s" % data)
-            if data == KeyMonitor.UNMUTED:
-                self.label.set_markup("<span foreground='#FF0000'>TALK</span>")
-            elif data == KeyMonitor.MUTED:
-                self.label.set_markup("<span>TALK</span>")
+            data_object = self.pipe.get_nowait()
+            data_type = data_object[0]
+            data = data_object[1]
+            logging.debug("Incoming Data -- %s" % str(data_object))
+            if data_type == "MUTED":
+                if data == KeyMonitor.UNMUTED:
+                    self.set_ui_talk()
+                elif data == KeyMonitor.MUTED:
+                    self.reset_ui()
         return True
+
+    def reset_ui(self):
+        self.label.set_markup("<span>TALK</span>")
+
+    def set_ui_talk(self):
+        self.label.set_markup("<span foreground='#FF0000'>TALK</span>")
 
     def start(self):
         self.pipe = Queue()
+        self.return_pipe = Queue()
 
         p = Process(
                 target=self.__class__.process,
-                args = (self.pipe, self.get_keycode, )
+                args = (self.pipe, self.return_pipe, self.get_keycode, )
             )
         p.start()
 
-        logging.info("Process spawned")
+        logging.debug("Process spawned")
         self.label.set_label("TALK")
         gobject.timeout_add(SkypePushToTalk.INTERVAL, self.read_incoming_pipe)
+
+    def set_key(self, *arguments):
+        logging.debug("Attempting to set key...")
+        self.label.set_markup("<span foreground='#00FF00'>PRESS</span>")
+        self.return_pipe.put(("SET", 1, ))
+        self.applet.show_all()
+
+    @property
+    def menu_xml(self):
+        return """<popup name="button3">
+            <menuitem name="SetKey" 
+                      verb="Set Key" 
+                      label="Set Key" 
+                      pixtype="stock" 
+                      pixname="gtk-preferences"/>
+        </popup>
+        """
 
 class KeyMonitor(object):
     RELEASE = 0
@@ -75,11 +105,12 @@ class KeyMonitor(object):
     """
     Heavily borrowed from PyKeyLogger
     """
-    def __init__(self, interface, pipe, test = False):
+    def __init__(self, interface, pipe, return_pipe, test = False):
         self.local_dpy = display.Display()
         self.record_dpy = display.Display()
         self.interface = interface
         self.pipe = pipe
+        self.return_pipe = return_pipe
 
         self.configured_keycode = None
         self.state = KeyMonitor.MUTED
@@ -89,19 +120,34 @@ class KeyMonitor(object):
         else:
             self.handler = self.interface_handler
 
+    @property
+    def configuration_file(self):
+        return os.path.expanduser("~/.push_to_talk_key")
+
     def get_configured_keycode(self):
         if not self.configured_keycode:
             try:
-                with open(os.path.expanduser("~/.push_to_talk_key"), "r") as infile:
+                with open(self.configuration_file, "r") as infile:
                     keycode = infile.read()
                     self.configured_keycode = int(keycode)
             except:
                 self.configured_keycode = KeyMonitor.F12_KEYCODE
         return self.configured_keycode
 
+    def set_configured_keycode(self, keycode):
+        logging.info("Setting keycode to %s" % keycode)
+        try:
+            with open(self.configuration_file, "w") as outfile:
+                outfile.write(str(keycode))
+                self.configured_keycode = None
+            return True
+        except Exception as e:
+            logging.exception(e)
+            return False
+
     def set_state(self, state):
         if self.state != state:
-            self.pipe.put(state)
+            self.pipe.put(("MUTED", state, ))
             if state == KeyMonitor.UNMUTED:
                 self.interface.unmute()
             elif state == KeyMonitor.MUTED:
@@ -158,7 +204,16 @@ class KeyMonitor(object):
 
     def keypressevent(self, event, action):
         keysym = self.local_dpy.keycode_to_keysym(event.detail, 0)
-        self.handler(keysym, action)
+        if not self.return_pipe.empty():
+            logging.debug("Key info %s" % keysym)
+            data_object = self.return_pipe.get_nowait()
+            data_type = data_object[0]
+            logging.debug("Got data %s" % str(data_object))
+            if data_type == "SET":
+                self.set_configured_keycode(keysym)
+            self.handler(keysym, action)
+        else:
+            self.handler(keysym, action)
 
 class SkypeInterface(object):
     def __init__(self, bus):
@@ -167,13 +222,13 @@ class SkypeInterface(object):
 
     def configure(self):
         try:
-            logging.info("Configuring...")
+            logging.debug("Configuring...")
             self.outgoing = self.bus.get_object('com.Skype.API', '/com/Skype')
             self.outgoing_channel = self.outgoing.get_dbus_method('Invoke')
             self.configured = True
 
             self.start()
-            logging.info("Configured.")
+            logging.debug("Configured.")
             return False
         except:
             # This happens if Skype is not available.
@@ -207,7 +262,7 @@ gobject.type_register(SkypePushToTalk)
 
 logging.basicConfig(
         filename=os.path.expanduser("~/.push_to_talk.log"),
-        level=logging.DEBUG
+        level=logging.INFO
     )
 
 if __name__ == "__main__":
