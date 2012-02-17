@@ -358,7 +358,7 @@ gobject.type_register(PushToTalk)
 
 logging.basicConfig(
         filename=os.path.expanduser("~/.push_to_talk.log"),
-        level=logging.DEBUG
+        level=logging.INFO
     )
 
 if __name__ == "__main__":
