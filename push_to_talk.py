@@ -14,85 +14,6 @@ from Xlib import display, X
 from Xlib.ext import record
 from Xlib.protocol import rq
 
-class PushToTalk(gnomeapplet.Applet):
-    INTERVAL = 100
-
-    def __init__(self, applet, iid, get_keycode=False):
-        self.applet = applet
-        self.iid = iid
-        self.get_keycode = get_keycode
-
-        self.label = gtk.Label("...")
-        self.applet.add(self.label)
-        self.applet.show_all()
-        self.applet.setup_menu(self.menu_xml, [
-                ('Set Key', self.set_key, )
-            ], None)
-
-        self.start()
-
-    @classmethod
-    def process(cls, pipe, return_pipe, get_keycode):
-        interface = AmixerInterface()
-
-        monitor = KeyMonitor(
-                interface, 
-                pipe,
-                return_pipe,
-                test=True if get_keycode else False
-            )
-        monitor.start()
-
-    def read_incoming_pipe(self):
-        while not self.pipe.empty():
-            data_object = self.pipe.get_nowait()
-            data_type = data_object[0]
-            data = data_object[1]
-            logging.debug("Incoming Data -- %s" % str(data_object))
-            if data_type == "MUTED":
-                if data == KeyMonitor.UNMUTED:
-                    self.set_ui_talk()
-                elif data == KeyMonitor.MUTED:
-                    self.reset_ui()
-        return True
-
-    def reset_ui(self):
-        self.label.set_markup("<span>TALK</span>")
-
-    def set_ui_talk(self):
-        self.label.set_markup("<span foreground='#FF0000'>TALK</span>")
-
-    def start(self):
-        self.pipe = Queue()
-        self.return_pipe = Queue()
-
-        p = Process(
-                target=self.__class__.process,
-                args = (self.pipe, self.return_pipe, self.get_keycode, )
-            )
-        p.start()
-
-        logging.debug("Process spawned")
-        self.label.set_label("TALK")
-        gobject.timeout_add(PushToTalk.INTERVAL, self.read_incoming_pipe)
-
-    def set_key(self, *arguments):
-        logging.debug("Attempting to set key...")
-        self.label.set_markup("<span foreground='#00FF00'>PRESS</span>")
-        self.return_pipe.put(("SET", 1, ))
-        self.applet.show_all()
-
-    @property
-    def menu_xml(self):
-        return """<popup name="button3">
-            <menuitem name="SetKey" 
-                      verb="Set Key" 
-                      label="Set Key" 
-                      pixtype="stock" 
-                      pixname="gtk-preferences"/>
-        </popup>
-        """
-
 class KeyMonitor(object):
     RELEASE = 0
     PRESS = 1
@@ -216,6 +137,9 @@ class KeyMonitor(object):
             self.handler(keysym, action)
 
 class AmixerInterface(object):
+    short_name = 'alsa'
+    verb = "Mute for all applications"
+
     def mute(self):
         subprocess.call([
                 'amixer',
@@ -233,6 +157,9 @@ class AmixerInterface(object):
             ])
 
 class SkypeInterface(object):
+    short_name = 'skype'
+    verb = "Mute only Skype"
+
     def __init__(self):
         self.bus = dbus.SessionBus()
         self.configured = False
@@ -269,8 +196,129 @@ class SkypeInterface(object):
         self._invoke('NAME PushToTalk')
         self._invoke('PROTOCOL 5')
 
+class PushToTalk(gnomeapplet.Applet):
+    INTERVAL = 100
+    INTERFACES = [
+            AmixerInterface,
+            SkypeInterface,
+            ]
+
+    def __init__(self, applet, iid, get_keycode=False):
+        self.applet = applet
+        self.iid = iid
+        self.get_keycode = get_keycode
+
+        self.label = gtk.Label("...")
+        self.applet.add(self.label)
+        self.applet.show_all()
+
+        self.audio_interface = self.INTERFACES[0]
+
+        self.do_setup_menu()
+        self.start()
+
+    @classmethod
+    def process(cls, pipe, return_pipe, get_keycode):
+        interface = AmixerInterface()
+
+        monitor = KeyMonitor(
+                interface, 
+                pipe,
+                return_pipe,
+                test=True if get_keycode else False
+            )
+        monitor.start()
+
+    def read_incoming_pipe(self):
+        while not self.pipe.empty():
+            data_object = self.pipe.get_nowait()
+            data_type = data_object[0]
+            data = data_object[1]
+            logging.debug("Incoming Data -- %s" % str(data_object))
+            if data_type == "MUTED":
+                if data == KeyMonitor.UNMUTED:
+                    self.set_ui_talk()
+                elif data == KeyMonitor.MUTED:
+                    self.reset_ui()
+        return True
+
+    def reset_ui(self):
+        self.label.set_markup("<span>TALK</span>")
+
+    def set_ui_talk(self):
+        self.label.set_markup("<span foreground='#FF0000'>TALK</span>")
+
+    def start(self):
+        self.pipe = Queue()
+        self.return_pipe = Queue()
+
+        p = Process(
+                target=self.__class__.process,
+                args = (self.pipe, self.return_pipe, self.get_keycode, )
+            )
+        p.start()
+
+        logging.debug("Process spawned")
+        self.label.set_label("TALK")
+        gobject.timeout_add(PushToTalk.INTERVAL, self.read_incoming_pipe)
+
+    def set_key(self, *arguments):
+        logging.debug("Attempting to set key...")
+        self.label.set_markup("<span foreground='#00FF00'>PRESS</span>")
+        self.return_pipe.put(("SET", 1, ))
+        self.applet.show_all()
+
+    def change_interface(self, uicomponent, verb):
+        logging.debug("Setting to verb '%s'" % verb)
+        for interface in self.INTERFACES:
+            if interface.verb == verb:
+                logging.debug("Interface is set!")
+                self.audio_interface = interface
+        self.do_setup_menu()
+
+    def get_audio_xml(self):
+        xml_strings = {}
+        for interface in self.INTERFACES:
+            xml_strings[interface.verb] = "<menuitem verb=\"%s\" label=\"%s\" />" % (
+                                interface.verb,
+                                interface.verb,
+                            )
+        return xml_strings
+
+    def do_setup_menu(self):
+        verbs = [
+                ('Set Key', self.set_key, ),
+                ]
+        for interface in self.INTERFACES:
+            if self.audio_interface.verb != interface.verb:
+                verbs.append(
+                            (interface.verb, self.change_interface, ),
+                        )
+        self.applet.setup_menu(self.menu_xml, verbs, None)
+
+    @property
+    def menu_xml(self):
+        audio_xml = self.get_audio_xml()
+        start_xml = """<popup name="button3">
+            <menuitem name="SetKey" 
+                    verb="Set Key" 
+                    label="Set Key" 
+                    pixtype="stock" 
+                    pixname="gtk-preferences"/>
+            <separator />"""
+        for audio_source_verb, audio_item in audio_xml.items():
+            if self.audio_interface.verb == audio_source_verb:
+                del(audio_xml[audio_source_verb])
+        end_xml = "</popup>"
+        final_xml = start_xml + "".join(audio_xml.values()) + end_xml
+        logging.debug(final_xml)
+        return final_xml
+
 def push_to_talk_factory(applet, iid, get_keycode=False):
-    PushToTalk(applet, iid, get_keycode)
+    try:
+        PushToTalk(applet, iid, get_keycode)
+    except Exception as e:
+        logging.exception(e)
     return gtk.TRUE
 
 pygtk.require('2.0')
@@ -279,7 +327,7 @@ gobject.type_register(PushToTalk)
 
 logging.basicConfig(
         filename=os.path.expanduser("~/.push_to_talk.log"),
-        level=logging.INFO
+        level=logging.DEBUG
     )
 
 if __name__ == "__main__":
