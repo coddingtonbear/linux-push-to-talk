@@ -372,7 +372,7 @@ logging.basicConfig(
 if __name__ == "__main__":
     logging.info("Starting via BonoboFactory.")
     gnomeapplet.bonobo_factory(
-            "OAFIID:SkypePushToTalk_Factory",
+            "OAFIID:PushToTalk_Factory",
             PushToTalk.__gtype__,
             "hello",
             "0",

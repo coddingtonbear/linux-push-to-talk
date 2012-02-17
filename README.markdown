@@ -1,6 +1,6 @@
 # Push-to-talk for Skype (on Linux)
 
-This gnome panel application allows one to assign a key (by default *F12*), that will unmute one's microphone in a skype conversation while pushed.
+This gnome panel application allows one to assign a key (by default *F12*), that will unmute one's microphone while pushed.
 
 ## Dependencies
 
@@ -15,7 +15,7 @@ On Ubuntu, this is as easy as running ``sudo apt-get install python-gtk2 python-
  2. Restart gnome panel by either logging-out/logging-in, or running ``sudo killall gnome-panel`` (it will automatically restart).
  3. Right-click on your gnome panel.
  4. Select 'Add to panel'.
- 5. Add 'Skype Push-to-talk'.
+ 5. Add 'Push-to-talk'.
 
 ## Changing the Push-to-talk Key
 
