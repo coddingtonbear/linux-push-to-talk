@@ -1,4 +1,4 @@
-# Push-to-talk for Skype (on Linux)
+# Push-to-talk for Linux
 
 This gnome panel application allows one to assign a key (by default *F12*), that will unmute one's microphone while pushed.
 
