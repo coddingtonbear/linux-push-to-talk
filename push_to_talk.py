@@ -212,17 +212,41 @@ class PushToTalk(gnomeapplet.Applet):
         self.applet.add(self.label)
         self.applet.show_all()
 
-        self.audio_interface = self.INTERFACES[0]
+        saved_interface = self.get_saved_interface()
+        self.audio_interface = saved_interface if saved_interface else self.INTERFACES[0]
 
         self.do_setup_menu()
         self.start()
 
-    @classmethod
-    def process(cls, pipe, return_pipe, get_keycode):
-        interface = AmixerInterface()
+    def get_saved_interface(self):
+        try:
+            name = self.get_saved_interface_name()
+            for interface in self.INTERFACES:
+                if interface.__name__ == name:
+                    return interface
+        except:
+            pass
+        return None
 
+    @property
+    def preferences_file(self):
+        return os.path.expanduser(
+                    "~/.push_to_talk_saved",
+                )
+
+    def get_saved_interface_name(self):
+        with open(self.preferences_file, "r") as infile:
+            interface = infile.read()
+        return interface
+
+    def set_saved_interface_name(self, name):
+        with open(self.preferences_file, "w") as outfile:
+            outfile.write(name)
+        return name
+
+    def process(self, pipe, return_pipe, get_keycode):
         monitor = KeyMonitor(
-                interface, 
+                self.audio_interface(), 
                 pipe,
                 return_pipe,
                 test=True if get_keycode else False
@@ -248,15 +272,20 @@ class PushToTalk(gnomeapplet.Applet):
     def set_ui_talk(self):
         self.label.set_markup("<span foreground='#FF0000'>TALK</span>")
 
+    def reset_process(self):
+        logging.debug("Killing process...")
+        self.p.terminate()
+        self.start()
+
     def start(self):
         self.pipe = Queue()
         self.return_pipe = Queue()
 
-        p = Process(
-                target=self.__class__.process,
-                args = (self.pipe, self.return_pipe, self.get_keycode, )
+        self.p = Process(
+                target=self.process,
+                args=(self.pipe, self.return_pipe, self.get_keycode, )
             )
-        p.start()
+        self.p.start()
 
         logging.debug("Process spawned")
         self.label.set_label("TALK")
@@ -273,8 +302,10 @@ class PushToTalk(gnomeapplet.Applet):
         for interface in self.INTERFACES:
             if interface.verb == verb:
                 logging.debug("Interface is set!")
+                self.set_saved_interface_name(interface.__name__)
                 self.audio_interface = interface
         self.do_setup_menu()
+        self.reset_process()
 
     def get_audio_xml(self):
         xml_strings = {}
