@@ -136,28 +136,36 @@ class KeyMonitor(object):
         else:
             self.handler(keysym, action)
 
-class AmixerInterface(object):
-    short_name = 'alsa'
+class PulseAudioInterface(object):
     verb = "Mute for all applications"
 
     def mute(self):
-        subprocess.call([
-                'amixer',
-                'set',
-                'Capture',
-                'nocap',
-            ])
+        index = 0
+        while True:
+            retval = subprocess.call([
+                    'pactl',
+                    'set-source-mute',
+                    str(index),
+                    '1',
+                ])
+            if retval != 0:
+                return
+            index = index + 1
 
     def unmute(self):
-        subprocess.call([
-                'amixer',
-                'set',
-                'Capture',
-                'cap',
-            ])
+        index = 0
+        while True:
+            retval = subprocess.call([
+                    'pactl',
+                    'set-source-mute',
+                    str(index),
+                    '0',
+                ])
+            if retval != 0:
+                return
+            index = index + 1
 
 class SkypeInterface(object):
-    short_name = 'skype'
     verb = "Mute only Skype"
 
     def __init__(self):
@@ -199,7 +207,7 @@ class SkypeInterface(object):
 class PushToTalk(gnomeapplet.Applet):
     INTERVAL = 100
     INTERFACES = [
-            AmixerInterface,
+            PulseAudioInterface,
             SkypeInterface,
             ]
 
