@@ -9,11 +9,12 @@ from multiprocessing import Process, Queue
 import os
 import os.path
 import pygtk
+import subprocess
 from Xlib import display, X
 from Xlib.ext import record
 from Xlib.protocol import rq
 
-class SkypePushToTalk(gnomeapplet.Applet):
+class PushToTalk(gnomeapplet.Applet):
     INTERVAL = 100
 
     def __init__(self, applet, iid, get_keycode=False):
@@ -32,8 +33,7 @@ class SkypePushToTalk(gnomeapplet.Applet):
 
     @classmethod
     def process(cls, pipe, return_pipe, get_keycode):
-        system_bus = dbus.SessionBus()
-        interface = SkypeInterface(system_bus)
+        interface = AmixerInterface()
 
         monitor = KeyMonitor(
                 interface, 
@@ -74,7 +74,7 @@ class SkypePushToTalk(gnomeapplet.Applet):
 
         logging.debug("Process spawned")
         self.label.set_label("TALK")
-        gobject.timeout_add(SkypePushToTalk.INTERVAL, self.read_incoming_pipe)
+        gobject.timeout_add(PushToTalk.INTERVAL, self.read_incoming_pipe)
 
     def set_key(self, *arguments):
         logging.debug("Attempting to set key...")
@@ -215,9 +215,26 @@ class KeyMonitor(object):
         else:
             self.handler(keysym, action)
 
+class AmixerInterface(object):
+    def mute(self):
+        subprocess.call([
+                'amixer',
+                'set',
+                'Capture',
+                'nocap',
+            ])
+
+    def unmute(self):
+        subprocess.call([
+                'amixer',
+                'set',
+                'Capture',
+                'cap',
+            ])
+
 class SkypeInterface(object):
-    def __init__(self, bus):
-        self.bus = bus
+    def __init__(self):
+        self.bus = dbus.SessionBus()
         self.configured = False
 
     def configure(self):
@@ -253,12 +270,12 @@ class SkypeInterface(object):
         self._invoke('PROTOCOL 5')
 
 def push_to_talk_factory(applet, iid, get_keycode=False):
-    SkypePushToTalk(applet, iid, get_keycode)
+    PushToTalk(applet, iid, get_keycode)
     return gtk.TRUE
 
 pygtk.require('2.0')
 
-gobject.type_register(SkypePushToTalk)
+gobject.type_register(PushToTalk)
 
 logging.basicConfig(
         filename=os.path.expanduser("~/.push_to_talk.log"),
@@ -269,7 +286,7 @@ if __name__ == "__main__":
     logging.info("Starting via BonoboFactory.")
     gnomeapplet.bonobo_factory(
             "OAFIID:SkypePushToTalk_Factory",
-            SkypePushToTalk.__gtype__,
+            PushToTalk.__gtype__,
             "hello",
             "0",
             push_to_talk_factory
