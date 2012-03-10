@@ -2,10 +2,10 @@
 from __future__ import with_statement
 import dbus
 import gtk
-import gnomeapplet
 import gobject
 import logging
 from multiprocessing import Process, Queue
+from optparse import OptionParser
 import os
 import os.path
 import pygtk
@@ -204,26 +204,24 @@ class SkypeInterface(object):
         self._invoke('NAME PushToTalk')
         self._invoke('PROTOCOL 5')
 
-class PushToTalk(gnomeapplet.Applet):
+class PushToTalk(gtk.StatusIcon):
     INTERVAL = 100
     INTERFACES = [
             PulseAudioInterface,
             SkypeInterface,
             ]
 
-    def __init__(self, applet, iid, get_keycode=False):
-        self.applet = applet
-        self.iid = iid
-        self.get_keycode = get_keycode
-
-        self.label = gtk.Label("...")
-        self.applet.add(self.label)
-        self.applet.show_all()
+    def __init__(self):
+        gtk.StatusIcon.__init__(self)
 
         saved_interface = self.get_saved_interface()
         self.audio_interface = saved_interface if saved_interface else self.INTERFACES[0]
 
         self.do_setup_menu()
+        
+        self.reset_ui()
+        self.set_tooltip('Test')
+        self.set_visible(True)
         self.start()
 
     def get_saved_interface(self):
@@ -252,12 +250,12 @@ class PushToTalk(gnomeapplet.Applet):
             outfile.write(name)
         return name
 
-    def process(self, pipe, return_pipe, get_keycode):
+    def process(self, pipe, return_pipe):
         monitor = KeyMonitor(
                 self.audio_interface(), 
                 pipe,
                 return_pipe,
-                test=True if get_keycode else False
+                test=False
             )
         monitor.start()
 
@@ -275,10 +273,22 @@ class PushToTalk(gnomeapplet.Applet):
         return True
 
     def reset_ui(self):
-        self.label.set_markup("<span>TALK</span>")
+        self.set_from_file(os.path.join(
+                os.path.dirname(__file__),
+                'icons/mute.png'
+            ))
 
     def set_ui_talk(self):
-        self.label.set_markup("<span foreground='#FF0000'>TALK</span>")
+        self.set_from_file(os.path.join(
+                os.path.dirname(__file__),
+                'icons/talk.png'
+            ))
+
+    def set_ui_setkey(self):
+        self.set_from_file(os.path.join(
+                os.path.dirname(__file__),
+                'icons/setkey.png'
+            ))
 
     def reset_process(self):
         logging.debug("Killing process...")
@@ -291,19 +301,17 @@ class PushToTalk(gnomeapplet.Applet):
 
         self.p = Process(
                 target=self.process,
-                args=(self.pipe, self.return_pipe, self.get_keycode, )
+                args=(self.pipe, self.return_pipe, )
             )
         self.p.start()
 
         logging.debug("Process spawned")
-        self.label.set_label("TALK")
         gobject.timeout_add(PushToTalk.INTERVAL, self.read_incoming_pipe)
 
     def set_key(self, *arguments):
         logging.debug("Attempting to set key...")
-        self.label.set_markup("<span foreground='#00FF00'>PRESS</span>")
+        self.set_ui_setkey()
         self.return_pipe.put(("SET", 1, ))
-        self.applet.show_all()
 
     def change_interface(self, uicomponent, verb):
         logging.debug("Setting to verb '%s'" % verb)
@@ -318,63 +326,87 @@ class PushToTalk(gnomeapplet.Applet):
     def get_audio_xml(self):
         xml_strings = {}
         for interface in self.INTERFACES:
-            xml_strings[interface.verb] = "<menuitem verb=\"%s\" label=\"%s\" />" % (
-                                interface.verb,
+            xml_strings[interface.verb] = "<menuitem action=\"%s\" />" % (
                                 interface.verb,
                             )
         return xml_strings
 
     def do_setup_menu(self):
-        verbs = [
-                ('Set Key', self.set_key, ),
-                ]
+        verbs = [(
+                'Menu',
+                None,
+                'Menu', 
+                ),
+                (
+                'SetKey', 
+                None, 
+                'Set Key', 
+                None, 
+                'Set key to use for push-to-talk', 
+                self.set_key, 
+            ),]
         for interface in self.INTERFACES:
             if self.audio_interface.verb != interface.verb:
-                verbs.append(
-                            (interface.verb, self.change_interface, ),
-                        )
-        self.applet.setup_menu(self.menu_xml, verbs, None)
+                verbs.append((
+                                interface.verb, 
+                                None, 
+                                interface.verb, 
+                                None, 
+                                '', 
+                                self.change_interface, 
+                        ),)
+
+        action_group = gtk.ActionGroup('Actions')
+        action_group.add_actions(verbs)
+
+        self.manager = gtk.UIManager()
+        self.manager.insert_action_group(action_group, 0)
+        self.manager.add_ui_from_string(self.menu_xml)
+        self.menu = self.manager.get_widget('/Menubar/Menu/SetKey').props.parent
+
+        self.connect('popup-menu', self.on_popup_menu)
+
+    def on_popup_menu(self, status, button, time):
+        self.menu.popup(None, None, None, button, time)
 
     @property
     def menu_xml(self):
         audio_xml = self.get_audio_xml()
-        start_xml = """<popup name="button3">
-            <menuitem name="SetKey" 
-                    verb="Set Key" 
-                    label="Set Key" 
-                    pixtype="stock" 
-                    pixname="gtk-preferences"/>
-            <separator />"""
+        start_xml = """
+            <ui>
+                <menubar name="Menubar">
+                    <menu action="Menu">
+                        <menuitem action="SetKey"/>
+                        <separator/>
+            """
         for audio_source_verb, audio_item in audio_xml.items():
             if self.audio_interface.verb == audio_source_verb:
                 del(audio_xml[audio_source_verb])
-        end_xml = "</popup>"
+        end_xml = """
+                    </menu>
+                </menubar>
+            </ui>"""
         final_xml = start_xml + "".join(audio_xml.values()) + end_xml
         logging.debug(final_xml)
         return final_xml
 
-def push_to_talk_factory(applet, iid, get_keycode=False):
-    try:
-        PushToTalk(applet, iid, get_keycode)
-    except Exception as e:
-        logging.exception(e)
-    return gtk.TRUE
-
-pygtk.require('2.0')
-
-gobject.type_register(PushToTalk)
-
-logging.basicConfig(
-        filename=os.path.expanduser("~/.push_to_talk.log"),
-        level=logging.INFO
-    )
+def configure_unity():
+    pass
 
 if __name__ == "__main__":
-    logging.info("Starting via BonoboFactory.")
-    gnomeapplet.bonobo_factory(
-            "OAFIID:PushToTalk_Factory",
-            PushToTalk.__gtype__,
-            "hello",
-            "0",
-            push_to_talk_factory
-        )
+    logging.info("Starting application...")
+    
+    parser = OptionParser()
+    parser.add_option('-v', '--verbose', dest='verbose', action='store_true', default=False)
+    parser.add_option('--configure-unity', dest='configure_unity', action='store_true', default=False)
+    (opts, args, ) = parser.parse_args()
+
+    if opts.configure_unity:
+        configure_unity()
+    else:
+        logging.basicConfig(
+                level=logging.DEBUG if opts.verbose else logging.INFO
+            )
+
+        PushToTalk()
+        gtk.main()
