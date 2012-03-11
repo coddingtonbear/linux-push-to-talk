@@ -44,7 +44,7 @@ class PushToTalk(gtk.StatusIcon):
 
         gtk.StatusIcon.__init__(self)
 
-        self.verify_unity_configuration()
+        self.configure_unity()
 
         saved_interface = self.get_saved_interface()
         self.audio_interface = saved_interface if saved_interface else self.INTERFACES[0]
@@ -56,16 +56,16 @@ class PushToTalk(gtk.StatusIcon):
         self.set_visible(True)
         self.start()
 
-    def verify_unity_configuration(self):
-        NAME = 'python'
+    def configure_unity(self):
+        application_name = 'ptt'
         schema = 'com.canonical.Unity.Panel'
         key = 'systray-whitelist'
         settings = Gio.Settings(schema)
         value = settings.get_value(key)
         if value:
-            if 'all' not in value and NAME not in value:
+            if 'all' not in value and application_name not in value:
                 unpacked = value.unpack()
-                unpacked.append(NAME)
+                unpacked.append(application_name)
                 updated = GLib.Variant('as', unpacked)
                 settings.set_value(key, updated)
                 raise Exception("You must log-out and log-in again for your system tray icon to appear.")
@@ -236,21 +236,14 @@ class PushToTalk(gtk.StatusIcon):
         self.logger.debug(final_xml)
         return final_xml
 
-def configure_unity():
-    pass
-
 def run_from_cmdline():
     parser = OptionParser()
     parser.add_option('-v', '--verbose', dest='verbose', action='store_true', default=False)
-    parser.add_option('--configure-unity', dest='configure_unity', action='store_true', default=False)
     (opts, args, ) = parser.parse_args()
 
     logging.basicConfig(
             level=logging.DEBUG if opts.verbose else logging.WARNING
         )
 
-    if opts.configure_unity:
-        configure_unity()
-    else:
-        PushToTalk()
-        gtk.main()
+    PushToTalk()
+    gtk.main()
