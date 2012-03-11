@@ -1,0 +1,4 @@
+#!/usr/bin/python
+
+from push_to_talk_app.application import run_from_cmdline
+run_from_cmdline()
