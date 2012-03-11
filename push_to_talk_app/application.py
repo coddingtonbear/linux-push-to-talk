@@ -52,7 +52,6 @@ class PushToTalk(gtk.StatusIcon):
         self.do_setup_menu()
         
         self.reset_ui()
-        self.set_tooltip('Test')
         self.set_visible(True)
         self.start()
 
@@ -123,18 +122,21 @@ class PushToTalk(gtk.StatusIcon):
                 os.path.dirname(__file__),
                 'icons/mute.png'
             ))
+        self.set_tooltip('Microphone Muted')
 
     def set_ui_talk(self):
         self.set_from_file(os.path.join(
                 os.path.dirname(__file__),
                 'icons/talk.png'
             ))
+        self.set_tooltip('Microphone Active')
 
     def set_ui_setkey(self):
         self.set_from_file(os.path.join(
                 os.path.dirname(__file__),
                 'icons/setkey.png'
             ))
+        self.set_tooltip('Please press a key...')
 
     def reset_process(self):
         self.logger.debug("Killing process...")
