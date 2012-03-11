@@ -26,9 +26,8 @@ from optparse import OptionParser
 import os
 import os.path
 
+from gi.repository import GObject, Gio, GLib
 import gtk
-import gobject
-import pygtk
 
 from interfaces import SkypeInterface, PulseAudioInterface
 from key_monitor import KeyMonitor
@@ -45,6 +44,8 @@ class PushToTalk(gtk.StatusIcon):
 
         gtk.StatusIcon.__init__(self)
 
+        self.verify_unity_configuration()
+
         saved_interface = self.get_saved_interface()
         self.audio_interface = saved_interface if saved_interface else self.INTERFACES[0]
 
@@ -54,6 +55,20 @@ class PushToTalk(gtk.StatusIcon):
         self.set_tooltip('Test')
         self.set_visible(True)
         self.start()
+
+    def verify_unity_configuration(self):
+        NAME = 'python'
+        schema = 'com.canonical.Unity.Panel'
+        key = 'systray-whitelist'
+        settings = Gio.Settings(schema)
+        value = settings.get_value(key)
+        if value:
+            if 'all' not in value and NAME not in value:
+                unpacked = value.unpack()
+                unpacked.append(NAME)
+                updated = GLib.Variant('as', unpacked)
+                settings.set_value(key, updated)
+                raise Exception("You must log-out and log-in again for your system tray icon to appear.")
 
     def get_saved_interface(self):
         try:
@@ -137,7 +152,7 @@ class PushToTalk(gtk.StatusIcon):
         self.p.start()
 
         self.logger.debug("Process spawned")
-        gobject.timeout_add(PushToTalk.INTERVAL, self.read_incoming_pipe)
+        GObject.timeout_add(PushToTalk.INTERVAL, self.read_incoming_pipe)
 
     def set_key(self, *arguments):
         self.logger.debug("Attempting to set key...")
@@ -195,7 +210,6 @@ class PushToTalk(gtk.StatusIcon):
         self.manager.insert_action_group(action_group, 0)
         self.manager.add_ui_from_string(self.menu_xml)
         self.menu = self.manager.get_widget('/Menubar/Menu/SetKey').props.parent
-
         self.connect('popup-menu', self.on_popup_menu)
 
     def on_popup_menu(self, status, button, time):
