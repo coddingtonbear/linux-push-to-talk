@@ -15,7 +15,7 @@ setup(
         'Programming Language :: Python',
         'Topic :: Utilities',
     ],
-    packages=['push_to_talk_app', ],
+    packages=['push_to_talk_app', 'push_to_talk_app.interfaces', ],
     entry_points={
             'console_scripts': [
                 'ptt = push_to_talk_app.application:run_from_cmdline',
