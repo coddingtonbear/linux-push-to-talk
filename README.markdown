@@ -1,25 +1,24 @@
 # Push-to-talk for Linux
 
-This gnome panel application allows one to assign a key (by default *F12*), that will unmute one's microphone while pushed.
+This gnome application allows one to assign a key (by default *F12*) that will unmute one's microphone while pushed.
 
 ## Dependencies
 
  - pygtk
- - xlib
+ - Xlib
 
 On Ubuntu, this is as easy as running ``sudo apt-get install python-gtk2 python-xlib``.
 
 ## Installation
 
- 1. Run ``sudo ./install.sh``.
- 2. Restart gnome panel by either logging-out/logging-in, or running ``sudo killall gnome-panel`` (it will automatically restart).
- 3. Right-click on your gnome panel.
- 4. Select 'Add to panel'.
- 5. Add 'Push-to-talk'.
+ 1. Run ``sudo python setup.py install``.
+ 2. Run ``ptt``.
+ 
+If the application immediately closes with the message "You must log-out and log-in again for your system tray icon to appear.", log-out and log-back in again; a system settings change was required.
 
 ## Changing the Push-to-talk Key
 
- 1. Right-click on the 'TALK' icon in your gnome panel.
+ 1. Right-click on the microphone icon in your system tray.
  2. Click 'Set Key'.
  3. Press the key you'd like to use.
 
