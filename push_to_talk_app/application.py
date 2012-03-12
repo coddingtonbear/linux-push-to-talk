@@ -59,15 +59,16 @@ class PushToTalk(gtk.StatusIcon):
         application_name = 'ptt'
         schema = 'com.canonical.Unity.Panel'
         key = 'systray-whitelist'
-        settings = Gio.Settings(schema)
-        value = settings.get_value(key)
-        if value:
-            if 'all' not in value and application_name not in value:
-                unpacked = value.unpack()
-                unpacked.append(application_name)
-                updated = GLib.Variant('as', unpacked)
-                settings.set_value(key, updated)
-                raise Exception("You must log-out and log-in again for your system tray icon to appear.")
+        if schema in Gio.Settings.list_schemas():
+            settings = Gio.Settings(schema)
+            value = settings.get_value(key)
+            if value:
+                if 'all' not in value and application_name not in value:
+                    unpacked = value.unpack()
+                    unpacked.append(application_name)
+                    updated = GLib.Variant('as', unpacked)
+                    settings.set_value(key, updated)
+                    raise Exception("You must log-out and log-in again for your system tray icon to appear.")
 
     def get_saved_interface(self):
         try:
