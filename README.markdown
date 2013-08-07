@@ -4,10 +4,11 @@ This gnome application allows one to assign a key (by default *F12*) that will u
 
 ## Dependencies
 
+ - setuptools
  - pygtk
  - Xlib
 
-On Ubuntu, this is as easy as running ``sudo apt-get install python-gtk2 python-xlib``.
+On Ubuntu, this is as easy as running ``sudo apt-get install python-setuptools python-gtk2 python-xlib``.
 
 ## Installation
 
