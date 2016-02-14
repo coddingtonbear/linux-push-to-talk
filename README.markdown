@@ -1,3 +1,7 @@
+
+**WARNING**: This project has long-since been unmaintained and is very unlikely to still be usable as-is on modern versions of Gnome.  Good luck, though!
+
+
 # Push-to-talk for Linux
 
 This gnome application allows one to assign a key (by default *F12*) that will unmute one's microphone while pushed.
