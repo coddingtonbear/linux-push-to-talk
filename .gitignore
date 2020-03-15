@@ -1,0 +1,4 @@
+*.pyc
+push_to_talk.egg-info
+build
+dist
